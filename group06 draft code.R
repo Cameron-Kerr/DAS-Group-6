@@ -1,0 +1,142 @@
+library(tidyverse)
+library(sjPlot)
+library(jtools)
+library(knitr)
+library(janitor)
+library(stats)
+library(GGally)
+
+dataset <- read.csv("C:/Users/Hedley/Desktop/dataset/dataset06.csv")
+
+dataset <- dataset %>%
+  drop_na()
+
+dataset$rating_new <- ifelse(dataset$rating > 7, 1, 0)
+dataset$rating_new <- as.factor(dataset$rating_new)
+dataset$genre <- as.factor(dataset$genre)
+
+str(dataset)
+
+# EDA
+ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "year")+ 
+  theme(legend.position = "none")
+
+# numerical explanatory variable
+ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "length")+ 
+  theme(legend.position = "none")
+
+ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "budget")+ 
+  theme(legend.position = "none")
+
+ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "votes")+ 
+  theme(legend.position = "none")
+
+# categorical explanatory variable
+dataset %>% 
+  tabyl(genre, rating_new) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns() # To show original counts
+
+ggplot(data = dataset, aes(x = rating_new, group = genre)) +
+  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
+  labs(x = "Rating", y = "Proportion")
+
+
+# formal analysis (baseline is 0(lower than 7))
+model1 <- glm(rating_new ~ year + length + budget + votes + genre, 
+                  data = dataset, 
+                  family = binomial(link = "logit"))
+model1 %>%
+  summary()
+
+confint(model1) %>%
+  kable()
+
+# Log-odds
+plot_model(model1, show.values = TRUE, transform = NULL,
+           title = "Log-Odds(higher than 7)", show.p = FALSE)
+dataset <- dataset %>%
+  mutate(logodds.higherthan7 = predict(model1))
+
+# Odds
+model1 %>%
+  coef() %>%
+  exp()
+plot_model(model1, show.values = TRUE, axis.lim = c(1,1.5),
+           title = "Odds (higher than 7)", show.p = FALSE)
+dataset <- dataset %>%
+  mutate(odds.higherthan7 = exp(logodds.higherthan7))
+
+#Probabilities
+dataset <- dataset %>%
+  mutate(probs.higherthan7 = fitted(model1))
+plot_model(model1, type = "pred", title = "",
+           axis.title = c("genre", "Prob. of rating higher than 7"))
+
+# plot the probability
+ggplot(data = dataset, aes(x = year, y = probs.higherthan7)) +
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "year", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset, aes(x = length, y = probs.higherthan7)) +
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "length", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset, aes(x = budget, y = probs.higherthan7)) +
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "budget", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset, aes(x = votes, y = probs.higherthan7)) +
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "votes", y = "Probability of rating higher than 7")
+
+# model selection
+model2 <- step(model1, direction = "both")
+model2 %>%
+  summary()
+
+# interaction effect
+model3 <- glm(rating_new ~ year + length * budget + votes + genre, 
+              family = binomial(link = "logit"), data = dataset)
+model3 %>%
+  summary()
+summ(model3)
+
+library(pROC)
+roc1 <- roc(dataset$rating_new, fitted(model1))
+roc2 <- roc(dataset$rating_new, fitted(model2))
+roc3 <- roc(dataset$rating_new, fitted(model3))
+
+auc1 <- auc(roc1)
+auc2 <- auc(roc2)
+auc3 <- auc(roc3)
+
+cat("AUC for model1:", auc1, "\n")
+cat("AUC for model2:", auc2, "\n")
+cat("AUC for model3:", auc3, "\n")
+
+plot(roc1, col = "blue", main = "ROC Curves for 3 models")
+plot(roc2, col = "red", add = TRUE)
+plot(roc3, col = "black", add = TRUE)
+legend("bottomright", legend = c("Model1", "Model2", "Model3"), col = c("blue", "red", "black"), lwd = 2)
+
+
+
+
