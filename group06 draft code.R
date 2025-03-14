@@ -94,24 +94,24 @@ confint(model2) %>%
 plot_model(model1, show.values = TRUE, transform = NULL,
            title = "Log-Odds(higher than 7)", show.p = FALSE)
 dataset <- dataset %>%
-  mutate(logodds.higherthan7 = predict(model1))
+  mutate(logodds.higherthan7 = predict(model2))
 
 # Odds
-model1 %>%
+model2 %>%
   coef() %>%
   exp()
-plot_model(model1, show.values = TRUE, axis.lim = c(1,1.5),
+plot_model(model2, show.values = TRUE, axis.lim = c(0.1,200),
            title = "Odds (higher than 7)", show.p = FALSE)
 dataset <- dataset %>%
   mutate(odds.higherthan7 = exp(logodds.higherthan7))
 
 #Probabilities
 dataset <- dataset %>%
-  mutate(probs.higherthan7 = fitted(model1))
-plot_model(model1, type = "pred", title = "",
+  mutate(probs.higherthan7 = fitted(model2))
+
+plot_model(model2, type = "pred", terms = "genre", title = "",
            axis.title = c("genre", "Prob. of rating higher than 7"))
 
-# plot the probability
 ggplot(data = dataset, aes(x = year, y = probs.higherthan7)) +
   geom_smooth(method="glm", 
               method.args = list(family="binomial"), 
@@ -130,23 +130,6 @@ ggplot(data = dataset, aes(x = budget, y = probs.higherthan7)) +
               se = FALSE) +
   labs(x = "budget", y = "Probability of rating higher than 7")
 
-ggplot(data = dataset, aes(x = votes, y = probs.higherthan7)) +
-  geom_smooth(method="glm", 
-              method.args = list(family="binomial"), 
-              se = FALSE) +
-  labs(x = "votes", y = "Probability of rating higher than 7")
-
-# model selection
-model2 <- step(model1, direction = "both")
-model2 %>%
-  summary()
-
-# interaction effect
-model3 <- glm(rating_new ~ year + length * budget + votes + genre, 
-              family = binomial(link = "logit"), data = dataset)
-model3 %>%
-  summary()
-summ(model3)
 
 library(pROC)
 roc1 <- roc(dataset$rating_new, fitted(model1))
@@ -166,14 +149,14 @@ plot(roc2, col = "red", add = TRUE)
 plot(roc3, col = "black", add = TRUE)
 legend("bottomright", legend = c("Model1", "Model2", "Model3"), col = c("blue", "red", "black"), lwd = 2)
 
-#model4-interaction without votes：
+#model4-interaction without votes：rating_new ~ year + length + budget * genre
+#we can try this in further work
 model4 <- glm(rating_new ~ year + length + budget * genre, 
               data = dataset, 
               family = binomial(link = "logit"))
 summary(model6)
-anova(model6, test = "Chisq")
 vif(model6)
-#AIC：901.84 but year not significant in anova
+
 summ(model6)
 confint(model6) %>%
   kable()
