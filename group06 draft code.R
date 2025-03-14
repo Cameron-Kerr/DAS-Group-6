@@ -6,7 +6,7 @@ library(janitor)
 library(stats)
 library(GGally)
 
-dataset <- read.csv("C:/Users/Hedley/Desktop/dataset/dataset06.csv")
+dataset <- read.csv("dataset06.csv")
 
 dataset <- dataset %>%
   drop_na()
