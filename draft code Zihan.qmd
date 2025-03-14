@@ -1,0 +1,280 @@
+---
+title: "Draft Code"
+author: "Group 06"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: false
+  eval: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: libraries
+library(tidyverse)
+library(sjPlot)
+library(jtools)
+library(knitr)
+library(janitor)
+library(stats)
+library(GGally)
+```
+
+```{r}
+#| label: data
+dataset <- read.csv("C:/Users/Hedley/Desktop/dataset/dataset06.csv")
+```
+
+# Introduction {#sec-Intro}
+
+Since the 20th century, movies have become an important form of entertainment for people. Movie ratings, to some extent, determine the success or failure of a film. This study aims to explore the factors influencing movie ratings. Our dataset comes from the IMDB film database, which contains a variety of information on all films that have been released. Below are the details of the variables:
+
+-   film.id -- The unique identifier for the film
+-   year -- Year of release of the film in cinemas
+-   length -- Duration (in minutes)
+-   budget -- Budget for the films production (in \$1000000s)
+-   votes -- Number of positive votes received by viewers
+-   genre -- Genre of the film
+-   rating -- IMDB rating from 0-10
+
+# Exploratory Data Analysis {#sec-EDA}
+
+```{r}
+dataset <- dataset %>%
+  drop_na()
+
+dataset$rating_new <- ifelse(dataset$rating > 7, 1, 0)
+dataset$rating_new <- as.factor(dataset$rating_new)
+dataset$genre <- as.factor(dataset$genre)
+```
+
+```{r}
+# Removing Outliers (IQR Method)
+dataset <- dataset %>%
+  filter(
+    between(length, quantile(length, 0.25) - 1.5 * IQR(length), quantile(length, 0.75) + 1.5 * IQR(length)),
+    between(budget, quantile(budget, 0.25) - 1.5 * IQR(budget), quantile(budget, 0.75) + 1.5 * IQR(budget)),
+    between(votes, quantile(votes, 0.25) - 1.5 * IQR(votes), quantile(votes, 0.75) + 1.5 * IQR(votes))
+  )
+```
+
+```{r}
+ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "<=7", "1" = ">7")) +
+  labs(x = "IMDB Rating", y = "year")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "<=7", "1" = ">7")) +
+  labs(x = "IMDB Rating", y = "length")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "<=7", "1" = ">7")) +
+  labs(x = "IMDB Rating", y = "budget")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "<=7", "1" = ">7")) +
+  labs(x = "IMDB Rating", y = "votes")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+dataset |> 
+  reframe(
+    Variable = c("year", "length", "budget", "votes"),
+    Mean = c(mean(year, na.rm = TRUE), mean(length, na.rm = TRUE), 
+             mean(budget, na.rm = TRUE), mean(votes, na.rm = TRUE)),
+    Median = c(median(year, na.rm = TRUE), median(length, na.rm = TRUE), 
+               median(budget, na.rm = TRUE), median(votes, na.rm = TRUE)),
+    St.Dev = c(sd(year, na.rm = TRUE), sd(length, na.rm = TRUE), 
+               sd(budget, na.rm = TRUE), sd(votes, na.rm = TRUE)),
+    Min = c(min(year, na.rm = TRUE), min(length, na.rm = TRUE), 
+            min(budget, na.rm = TRUE), min(votes, na.rm = TRUE)),
+    Max = c(max(year, na.rm = TRUE), max(length, na.rm = TRUE), 
+            max(budget, na.rm = TRUE), max(votes, na.rm = TRUE))
+  ) |> 
+  gt() |> 
+  fmt_number(decimals = 2)
+```
+
+```{r}
+dataset %>% 
+  tabyl(genre, rating_new) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns() # To show original counts
+
+ggplot(data = dataset, aes(x = rating_new, group = genre)) +
+  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
+  labs(x = "Rating", y = "Proportion")
+```
+
+```{r}
+df_selected <- dataset |> select(year, length, budget, votes, rating)
+ggpairs(df_selected, columns = c("year", "length", "budget", "votes", "rating"))
+```
+
+# Formal Data Analysis {#sec-FDA}
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+model1 <- glm(rating_new ~ year + length + budget + votes + genre, data = dataset, 
+                  family = binomial(link = "logit"))
+model1 %>%
+  summary()
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+model2 <- step(model1, direction = "both")
+model2 %>%
+  summary()
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+model3 <- glm(rating_new ~ year + length + budget + votes, data = dataset, 
+              family = binomial(link = "logit"))
+model3 %>%
+  summary()
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+model4 <- glm(rating_new ~ year + length + budget, data = dataset, 
+              family = binomial(link = "logit"))
+model4 %>%
+  summary()
+```
+
+```{r}
+dataset_removed <- dataset %>%
+  filter(!genre %in% c("Romance", "Animation"))
+
+model5 <- glm(rating_new ~ year + length + budget + genre,
+              data = dataset_removed,
+              family = binomial(link = "logit"))
+model5 %>%
+  summary()
+```
+
+```{r}
+confint(model1) %>%
+  kable()
+confint(model2) %>%
+  kable()
+confint(model3) %>%
+  kable()
+confint(model4) %>%
+  kable()
+confint(model5) %>%
+  kable()
+```
+
+```{r}
+summ(model1)
+summ(model2)
+summ(model3)
+summ(model4)
+summ(model5)
+```
+
+```{r}
+confint(model5) %>%
+  kable()
+```
+
+```{r}
+# Log-odds
+plot_model(model5, show.values = TRUE, transform = NULL,
+           title = "Log-Odds(higher than 7)", show.p = FALSE)
+```
+
+```{r}
+dataset_removed <- dataset_removed  %>%
+  mutate(logodds.higherthan7 = predict(model5))
+```
+
+```{r}
+model5 %>%
+ coef() %>%
+  exp()
+```
+
+```{r}
+# Odds
+plot_model(model5, show.values = TRUE,
+           title = "Odds (higher than 7)", show.p = FALSE)
+```
+
+```{r}
+dataset_removed <- dataset_removed %>%
+  mutate(odds.higherthan7 = exp(logodds.higherthan7))
+```
+
+```{r}
+# Probabilities
+plot_model(model5, type = "pred", title = "",
+           axis.title = c("genre", "Prob. of rating higher than 7"))
+```
+
+```{r}
+dataset_removed <- dataset_removed %>% 
+  mutate(probs.higherthan7 = fitted(model5))
+```
+
+```{r}
+# Plot the probability
+ggplot(data = dataset_removed, aes(x = year, y = probs.higherthan7)) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  labs(x = "year", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset_removed, aes(x = length, y = probs.higherthan7)) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  labs(x = "length", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset_removed, aes(x = budget, y = probs.higherthan7)) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  labs(x = "budget", y = "Probability of rating higher than 7")
+
+ggplot(data = dataset_removed, aes(x = votes, y = probs.higherthan7)) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  labs(x = "votes", y = "Probability of rating higher than 7")
+```
+
+# Conclusions {#sec-Conc}
