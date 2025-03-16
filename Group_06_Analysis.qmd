@@ -251,7 +251,7 @@ table(dataset$genre)
 The probability plot illustrates the likelihood of a movie receiving a rating higher than 7 based on its genre. Documentary films have the highest probability, followed by Short films, which show a wide range of uncertainty but generally have a high probability. The large uncertainty in Short films may be due to a smaller sample size. Comedy movies also perform well, with an estimated probability above 50%. Drama and Action movies have the lowest probabilities, with Drama films being nearly unlikely to receive a rating above 7.
 
 ```{r}
-genre_probs <- dataset %>%
+genre_probs <- dataset_up %>%
   group_by(genre) %>%
   summarise(mean_prob = mean(probs.higherthan7))
 
@@ -301,6 +301,18 @@ ggplot(data = dataset_up, aes(x = budget, y = probs.higherthan7)) +
 
 This plot illustrates the relationship between movie budget and the probability of receiving a rating higher than 7. The probability of a high rating increases as the budget rises, with lower-budget movies (under 10 million) having a relatively low probability, while higher-budget films (above 15 million) are significantly more likely to receive high ratings. This suggests that bigger budgets may contribute to better production quality.
 
+## Evaluating the Model
+
+```{r}
+library(pROC)
+
+roc_curve <- roc(dataset_up$rating_new, fitted(model3))
+plot(roc_curve, main = paste("ROC Curve (AUC =", round(auc(roc_curve), 3), ")"),
+     col = "blue", lwd = 2)
+```
+
+The ROC curve demonstrates that model 3 has excellent classification performance, with an AUC of 0.955, indicating strong discriminative ability. The curve is close to the top-left corner, suggesting high sensitivity and specificity, meaning the model effectively identifies positive cases while minimizing false positives.
+
 # Conclusion
 
 # Future Work
@@ -326,6 +338,7 @@ summ(model4)
 
 AIC 790.....
 
+***Lasso: same for model 3
 ```{r}
 # lasso: also remove votes, Animation and Romance
 library(glmnet)
