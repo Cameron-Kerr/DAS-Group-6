@@ -251,6 +251,21 @@ table(dataset$genre)
 The probability plot illustrates the likelihood of a movie receiving a rating higher than 7 based on its genre. Documentary films have the highest probability, followed by Short films, which show a wide range of uncertainty but generally have a high probability. The large uncertainty in Short films may be due to a smaller sample size. Comedy movies also perform well, with an estimated probability above 50%. Drama and Action movies have the lowest probabilities, with Drama films being nearly unlikely to receive a rating above 7.
 
 ```{r}
+genre_probs <- dataset %>%
+  group_by(genre) %>%
+  summarise(mean_prob = mean(probs.higherthan7))
+
+ggplot(genre_probs, aes(x = genre, y = mean_prob, fill = genre)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Probability of Rating > 7 for Different Movie Genres",
+       x = "Movie Genre",
+       y = "Average Probability") +
+  theme_minimal()
+```
+
+This bar chart illustrates the average probability of different movie genres receiving a rating greater than 7. The results show that Short films and Documentaries have the highest probability, while Drama and Romance have the lowest. Animation and Comedy also exhibit relatively high probabilities. 
+
+```{r}
 
 ggplot(data = dataset_up, aes(x = year, y = probs.higherthan7)) +
   geom_smooth(method="glm", 
@@ -310,3 +325,14 @@ summ(model4)
 ```
 
 AIC 790.....
+
+```{r}
+# lasso: also remove votes, Animation and Romance
+library(glmnet)
+X <- model.matrix(rating_new ~ year + length + budget + votes + genre, data = dataset)[,-1]
+y <- dataset$rating_new
+lasso_model <- cv.glmnet(X, y, family = "binomial", alpha = 1)
+coef(lasso_model, s = "lambda.min")
+coef(lasso_model, s = "lambda.1se")
+
+```
