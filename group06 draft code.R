@@ -64,8 +64,8 @@ ggplot(dataset, aes(x = genre, y = rating, fill = genre)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-###############formal analysis ###############
-###model selection
+###############Formal Analysis ###############
+#model selection
 levels(dataset$rating_new) #baseline is 0(rating lower than 7))
 
 #model1-full model: rating_new ~ year + length + budget + votes + genre
@@ -80,6 +80,7 @@ vif(model1)
 summ(model1)
 confint(model1) %>%
   kable()
+
 #model2-stepwise: rating_new ~ year + length + budget + genre
 model2 <- step(model1, direction = "both", trace = TRUE)
 summary(model2)
@@ -89,6 +90,8 @@ vif(model2)
 summ(model2)
 confint(model2) %>%
   kable()
+
+#model3-remove genre Anmiation and Romance
 
 # Log-odds
 plot_model(model1, show.values = TRUE, transform = NULL,
@@ -150,7 +153,7 @@ plot(roc3, col = "black", add = TRUE)
 legend("bottomright", legend = c("Model1", "Model2", "Model3"), col = c("blue", "red", "black"), lwd = 2)
 
 #model4-interaction without votes：rating_new ~ year + length + budget * genre
-#we can try this in further work
+#we can try this in future work
 model4 <- glm(rating_new ~ year + length + budget * genre, 
               data = dataset, 
               family = binomial(link = "logit"))
