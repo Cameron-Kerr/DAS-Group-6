@@ -1,4 +1,4 @@
-# IMDB Movie Rating Prediction (Logistic Regression)-Group 6
+# IMDB Movie Rating Prediction-Group 6
 This is a repository of material used for Project 2 for Group 6 of the Data Analysis Skills course at the University of Glasgow.
 
 This project aims to analyze the IMDB dataset using logistic regression to determine which factors influence whether a movie receives a rating higher than 7.
