@@ -4,7 +4,7 @@ This is a repository of material used for Project 2 for Group 6 of the Data Anal
 This project aims to analyze the IMDB dataset using logistic regression to determine which factors influence whether a movie receives a rating higher than 7.
 By understanding these influences, producers can make decisions to improve the success of future films. 
 In addition, this analysis provides insights into audience preferences and industry trends, helping to predict the likelihood of a film receiving a high rating.
-.......
+
 
 ## Features
 - Uses logistic regression to predict ratings.
@@ -12,7 +12,7 @@ In addition, this analysis provides insights into audience preferences and indus
 - Provides visualizations of final results.
 
 ## Installation
-Please make sure you have the folliwing packages in R: 
+Please make sure you have the following packages in R: 
 
 ```
 install.packages("tidyverse")
@@ -22,5 +22,5 @@ install.packages("knitr")
 install.packages("janitor")
 install.packages("GGally")
 install.packages("car")
-
+install.packages("glmnet")
 ```
