@@ -19,7 +19,7 @@ dataset$genre <- as.factor(dataset$genre)
 
 str(dataset)
 
-##############Exploratory Data Analysis##############
+##############Exploratory Analysis##############
 ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "year")+ 
