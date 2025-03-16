@@ -1,0 +1,312 @@
+---
+title: "IMDB Movie Rating Prediction by Group 6"
+author: ABCDE
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  pdf: default
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true
+  eval: true
+  warning: false
+  message: false
+geometry: margin=1in,landscape
+---
+
+```{r}
+#| label: libraries
+library(tidyverse)
+library(sjPlot)
+library(jtools)
+library(knitr)
+library(janitor)
+library(stats)
+library(GGally)
+library(car)
+```
+
+```{r}
+#| label: data
+#Explore Data
+dataset <- read.csv("dataset06.csv")
+
+dataset <- dataset %>%
+  drop_na()
+#binary: rating > 7 is set to 1, rating <= 7 is set to 0)
+dataset$rating_new <- ifelse(dataset$rating > 7, 1, 0)
+#Convert categorical variables to factor variables
+dataset$rating_new <- as.factor(dataset$rating_new)
+dataset$genre <- as.factor(dataset$genre)
+
+str(dataset)
+
+```
+
+# Introduction
+
+This project aims to analyse the IMDB dataset using logistic regression to determine which factors influence whether a movie receives a rating higher than 7. By understanding these influences, producers can make decisions to improve the success of future films. In addition, this analysis provides insights into audience preferences and industry trends, helping to predict the likelihood of a film receiving a high rating......
+
+# Exploratory Analysis
+
+```{r}
+
+ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "year")+ 
+  theme(legend.position = "none")
+```
+
+Numerical explanatory variable
+
+```{r}
+
+ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "length")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+
+ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "budget")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+
+ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", y = "votes")+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+
+#log(votes)
+ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new)) +
+  geom_boxplot() +
+  labs(x = "rating_new", 
+       y = "log(votes + 1)", 
+       title = "Log-Transformed Votes vs Rating Category") + 
+  theme(legend.position = "none")
+```
+
+Categorical explanatory variable
+
+```{r}
+dataset %>% 
+  tabyl(genre, rating_new) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns() # To show original counts
+```
+
+```{r}
+
+ggplot(data = dataset, aes(x = rating_new, group = genre)) +
+  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
+  labs(x = "Rating", y = "Proportion")
+```
+
+```{r}
+
+#boxplot-genre
+ggplot(dataset, aes(x = genre, y = rating, fill = genre)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Formal Analysis
+
+```{r}
+levels(dataset$rating_new) #baseline is 0(rating lower than 7))
+```
+
+## Model Selection
+
+```{r}
+#model1-full model: rating_new ~ year + length + budget + votes + genre
+model1 <- glm(rating_new ~ year + length + budget + votes + genre, 
+                  data = dataset, 
+                  family = binomial(link = "logit"))
+```
+
+```{r}
+
+summ(model1)
+```
+
+Model 1: votes not significant, will use stepwise regression.
+
+```{r}
+#model2-stepwise: rating_new ~ year + length + budget + genre
+model2 <- step(model1, direction = "both", trace = TRUE) #Bidirectional stepwise regression
+```
+
+```{r}
+
+summ(model2)
+```
+
+Model 2:
+
+We used bidirectional stepwise regression. Removing votes, AIC drops to 967.95.
+
+The collinearity problem is not serious.
+
+But Animation and Romance have p-value \>0.05, can be removed.
+
+```{r}
+dataset_up <- dataset %>%
+  select(-votes)%>%
+  filter(!genre %in% c("Romance", "Animation"))
+
+model3 <- glm(rating_new ~ year + length + budget + genre,
+              data = dataset_up,
+              family = binomial(link = "logit"))
+```
+
+```{r}
+
+vif(model3)
+
+summ(model3)
+
+confint(model3) %>%
+  kable()
+```
+
+AIC drops to 861.63.
+
+$$
+\log \left( \frac{P(Y = 1)}{1 - P(Y = 1)} \right) = \beta_0 + \beta_1 \cdot \text{year} + \beta_2 \cdot \text{length} + \beta_3 \cdot \text{budget} + \sum_i \beta_{4i} \cdot \text{genre}_i
+$$
+
+$$
+\log \left( \frac{P(Y = 1)}{1 - P(Y = 1)} \right) =\beta_0 + \beta_1 \cdot \text{year} + \beta_2 \cdot \text{length} + \beta_3 \cdot \text{budget} + \beta_4 \cdot \text{genre}_{\text{Comedy}} \\ + \beta_5 \cdot \text{genre}_{\text{Documentary}} + \beta_6 \cdot \text{genre}_{\text{Drama}} + \beta_7 \cdot \text{genre}_{\text{Short}}
+$$
+
+where:
+
+-   Y is a binary response variable (rating_new), where 0 means rating lower than 7 and 1 means rating higher than 7
+
+-   $\log \left( \frac{P(Y = 1)}{1 - P(Y = 1)} \right)$ represents the log-odds (logit function)
+
+-   year, length, and budget are numerical predictor variables including
+
+-   genre_Comedy, genre_Documentary, genre_Drama, and genre_Short are categorical variables represented as dummy variables.
+
+## Log-odds
+
+```{r}
+
+# Log-odds
+plot_model(model3, show.values = TRUE, transform = NULL,
+           title = "Log-Odds(higher than 7)", show.p = FALSE)
+dataset_up <- dataset_up %>%
+  mutate(logodds.higherthan7 = predict(model3))
+```
+
+Comedy (3.24), Short (3.68), and Documentary (5.34) genres significantly increase the odds of high ratings, while Drama (-1.67) has a negative impact. Budget (0.54) has a positive effect, suggesting that higher-budget films are more likely to receive higher ratings. Length (-0.07) still shows a slight negative impact, while year (0.02) remains an insignificant predictor.
+
+## Odds
+
+```{r}
+
+# Odds
+model3 %>%
+  coef() %>%
+  exp()
+plot_model(model3, show.values = TRUE, axis.lim = c(0.1,220),
+           title = "Odds (higher than 7)", show.p = FALSE)
+dataset_up <- dataset_up %>%
+  mutate(odds.higherthan7 = exp(logodds.higherthan7))
+```
+
+The odds ratio plot shows that genre has the strongest influence. Documentary (208.51), Short (39.81), and Comedy (25.48) genres significantly increase the odds of high ratings. Budget (1.72) has a positive effect, suggesting that higher-budget movies are more likely to receive favorable ratings. Length (0.94) has a slight negative impact, while year (1.02) appears to have little effect.
+
+## Probability
+
+```{r}
+dataset_up <- dataset_up %>%
+  mutate(probs.higherthan7 = fitted(model3))
+```
+
+```{r}
+
+plot_model(model3, type = "pred", terms = "genre", title = "",
+           axis.title = c("genre", "Prob. of rating higher than 7"))
+```
+
+```{r}
+table(dataset$genre)
+```
+
+The probability plot illustrates the likelihood of a movie receiving a rating higher than 7 based on its genre. Documentary films have the highest probability, followed by Short films, which show a wide range of uncertainty but generally have a high probability. The large uncertainty in Short films may be due to a smaller sample size. Comedy movies also perform well, with an estimated probability above 50%. Drama and Action movies have the lowest probabilities, with Drama films being nearly unlikely to receive a rating above 7.
+
+```{r}
+
+ggplot(data = dataset_up, aes(x = year, y = probs.higherthan7)) +
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "year", y = "Probability of rating higher than 7")
+```
+
+This plot shows the predicted probability of a movie receiving a rating above 7 over time. Newer movies may have a slightly higher probability of receiving a high rating than older movies. However, the overall increase in probability is relatively small, ranging from 0.28 to 0.32. This suggests that the release year has a slight positive effect on the high rating.
+
+```{r}
+
+ggplot(data = dataset_up, aes(x = length, y = probs.higherthan7)) +
+  geom_point(alpha = 0.3, color = "orange")+
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "length", y = "Probability of rating higher than 7")
+```
+
+This plot illustrates the relationship between movie length and the probability of receiving a rating higher than 7. The probability of receiving a high rating is highest for shorter films, particularly those under 50 minutes. However, as movie duration increases beyond 100 minutes, the probability declines sharply and approaches 0% beyond 150 minutes. This suggests that excessively long movies are less likely to receive high ratings.
+
+```{r}
+
+ggplot(data = dataset_up, aes(x = budget, y = probs.higherthan7)) +
+  geom_point(alpha = 0.3, color = "orange")+
+  geom_smooth(method="glm", 
+              method.args = list(family="binomial"), 
+              se = FALSE) +
+  labs(x = "budget", y = "Probability of rating higher than 7")
+
+```
+
+This plot illustrates the relationship between movie budget and the probability of receiving a rating higher than 7. The probability of a high rating increases as the budget rises, with lower-budget movies (under 10 million) having a relatively low probability, while higher-budget films (above 15 million) are significantly more likely to receive high ratings. This suggests that bigger budgets may contribute to better production quality.
+
+# Conclusion
+
+# Future Work
+
+```{r}
+dataset_removed <- dataset %>%
+  select(-votes)%>%
+  filter(!genre %in% c("Romance", "Animation", "Documentary"))
+
+```
+
+```{r}
+
+#model4-interaction without votes：rating_new ~ year + length + budget * genre
+model4 <- glm(rating_new ~ year + length + budget * genre, 
+              data = dataset_removed, 
+              family = binomial(link = "logit"))
+
+vif(model4)
+
+summ(model4)
+```
+
+AIC 790.....
