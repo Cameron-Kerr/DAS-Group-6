@@ -10,7 +10,7 @@ format:
 editor_options: 
   chunk_output_type: console
 execute:
-  echo: true
+  echo: false
   eval: true
   warning: false
   message: false
@@ -27,12 +27,13 @@ library(janitor)
 library(stats)
 library(GGally)
 library(car)
+library(gt)
 ```
 
 ```{r}
 #| label: data
 #Explore Data
-dataset <- read.csv("dataset06.csv")
+dataset <- read.csv("C:/Users/yldca/Downloads/DatasetPJ2/dataset06.csv")
 
 dataset <- dataset %>%
   drop_na()
@@ -43,7 +44,6 @@ dataset$rating_new <- as.factor(dataset$rating_new)
 dataset$genre <- as.factor(dataset$genre)
 
 str(dataset)
-
 ```
 
 # Introduction
@@ -52,18 +52,98 @@ This project aims to analyse the IMDB dataset using logistic regression to deter
 
 # Exploratory Analysis
 
-```{r}
+## Dataset Summary
 
+```{r}
+summary_table <- dataset %>%
+  summarise(
+    `Mean` = mean(year, na.rm = TRUE),
+    `Median` = median(year, na.rm = TRUE),
+    `St.Dev` = sd(year, na.rm = TRUE),
+    `Min` = min(year, na.rm = TRUE),
+    `Max` = max(year, na.rm = TRUE),
+    `IQR` = IQR(year, na.rm = TRUE)
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        `Mean` = mean(length, na.rm = TRUE),
+        `Median` = median(length, na.rm = TRUE),
+        `St.Dev` = sd(length, na.rm = TRUE),
+        `Min` = min(length, na.rm = TRUE),
+        `Max` = max(length, na.rm = TRUE),
+        `IQR` = IQR(length, na.rm = TRUE)
+      )
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        `Mean` = mean(budget, na.rm = TRUE),
+        `Median` = median(budget, na.rm = TRUE),
+        `St.Dev` = sd(budget, na.rm = TRUE),
+        `Min` = min(budget, na.rm = TRUE),
+        `Max` = max(budget, na.rm = TRUE),
+        `IQR` = IQR(budget, na.rm = TRUE)
+      )
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        `Mean` = mean(votes, na.rm = TRUE),
+        `Median` = median(votes, na.rm = TRUE),
+        `St.Dev` = sd(votes, na.rm = TRUE),
+        `Min` = min(votes, na.rm = TRUE),
+        `Max` = max(votes, na.rm = TRUE),
+        `IQR` = IQR(votes, na.rm = TRUE)
+      )
+  ) %>%
+  mutate(Variable = c("Year", "Length", "Budget", "Votes")) %>%
+  select(Variable, everything())
+
+summary_table %>%
+  gt() %>%
+  fmt_number(columns = 2:7, decimals = 2) %>%
+  cols_label(
+    Variable = "Variable",
+    Mean = "Mean",
+    Median = "Median",
+    St.Dev = "Std. Dev",
+    Min = "Minimum",
+    Max = "Maximum",
+    IQR = "IQR"
+  )
+
+```
+
+```{r}
+#count each genre and proportion
+genre_summary <- dataset %>%
+  count(genre) %>%
+  mutate(Proportion = n / sum(n)) %>%
+  arrange(desc(n))
+
+genre_summary %>%
+  gt() %>%
+  fmt_number(columns = 3, decimals = 2) %>%
+  cols_label(
+    genre = "Genre",
+    n = "Count",
+    Proportion = "Proportion"
+  )
+```
+
+## Plots
+
+### Numerical explanatory variables
+
+```{r}
 ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "year")+ 
   theme(legend.position = "none")
 ```
 
-Numerical explanatory variable
-
 ```{r}
-
 ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "length")+ 
@@ -71,7 +151,6 @@ ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
 ```
 
 ```{r}
-
 ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "budget")+ 
@@ -87,7 +166,6 @@ ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
 ```
 
 ```{r}
-
 #log(votes)
 ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new)) +
   geom_boxplot() +
@@ -97,29 +175,37 @@ ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new
   theme(legend.position = "none")
 ```
 
-Categorical explanatory variable
+### Categorical explanatory variable
 
 ```{r}
-dataset %>% 
-  tabyl(genre, rating_new) %>% 
-  adorn_percentages() %>% 
-  adorn_pct_formatting() %>% 
-  adorn_ns() # To show original counts
-```
-
-```{r}
-
-ggplot(data = dataset, aes(x = rating_new, group = genre)) +
-  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
-  labs(x = "Rating", y = "Proportion")
-```
-
-```{r}
-
 #boxplot-genre
 ggplot(dataset, aes(x = genre, y = rating, fill = genre)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+genre_rating <- dataset %>% 
+  tabyl(genre, rating_new) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns() %>% 
+  gt() %>%
+  cols_label(
+    genre = "Genre",
+    `0` = "Rating ≤ 7",
+    `1` = "Rating > 7"
+  ) %>%
+  tab_header(
+    title = "Movie Ratings by Genre"
+  )
+genre_rating
+```
+
+```{r}
+ggplot(data = dataset, aes(x = rating_new, group = genre)) +
+  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
+  labs(x = "Rating", y = "Proportion")
 ```
 
 # Formal Analysis
@@ -135,10 +221,6 @@ levels(dataset$rating_new) #baseline is 0(rating lower than 7))
 model1 <- glm(rating_new ~ year + length + budget + votes + genre, 
                   data = dataset, 
                   family = binomial(link = "logit"))
-```
-
-```{r}
-
 summ(model1)
 ```
 
@@ -244,10 +326,6 @@ plot_model(model3, type = "pred", terms = "genre", title = "",
            axis.title = c("genre", "Prob. of rating higher than 7"))
 ```
 
-```{r}
-table(dataset$genre)
-```
-
 The probability plot illustrates the likelihood of a movie receiving a rating higher than 7 based on its genre. Documentary films have the highest probability, followed by Short films, which show a wide range of uncertainty but generally have a high probability. The large uncertainty in Short films may be due to a smaller sample size. Comedy movies also perform well, with an estimated probability above 50%. Drama and Action movies have the lowest probabilities, with Drama films being nearly unlikely to receive a rating above 7.
 
 ```{r}
@@ -263,7 +341,7 @@ ggplot(genre_probs, aes(x = genre, y = mean_prob, fill = genre)) +
   theme_minimal()
 ```
 
-This bar chart illustrates the average probability of different movie genres receiving a rating greater than 7. The results show that Short films and Documentaries have the highest probability, while Drama and Romance have the lowest. Animation and Comedy also exhibit relatively high probabilities. 
+This bar chart illustrates the average probability of different movie genres receiving a rating greater than 7. The results show that Short films and Documentaries have the highest probability, while Drama and Romance have the lowest. Animation and Comedy also exhibit relatively high probabilities.
 
 ```{r}
 
@@ -338,9 +416,10 @@ summ(model4)
 
 AIC 790.....
 
-***Lasso: same for model 3
+lasso
+
 ```{r}
-# lasso: also remove votes, Animation and Romance
+install.packages("glmnet")
 library(glmnet)
 X <- model.matrix(rating_new ~ year + length + budget + votes + genre, data = dataset)[,-1]
 y <- dataset$rating_new
