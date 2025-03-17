@@ -11,7 +11,7 @@ editor_options:
   chunk_output_type: console
 execute:
   echo: true
-  eval: true
+  eval: false
   warning: false
   message: false
 geometry: margin=1in,landscape
@@ -27,12 +27,15 @@ library(janitor)
 library(stats)
 library(GGally)
 library(car)
+library(gt)
+library(pROC)
+library(dplyr)
 ```
 
 ```{r}
 #| label: data
 #Explore Data
-dataset <- read.csv("dataset06.csv")
+dataset <- read.csv("C:/Users/yldca/Downloads/DatasetPJ2/dataset06.csv")
 
 dataset <- dataset %>%
   drop_na()
@@ -43,7 +46,6 @@ dataset$rating_new <- as.factor(dataset$rating_new)
 dataset$genre <- as.factor(dataset$genre)
 
 str(dataset)
-
 ```
 
 # Introduction
@@ -52,18 +54,110 @@ This project aims to analyse the IMDB dataset using logistic regression to deter
 
 # Exploratory Analysis
 
-```{r}
+## Dataset Summary
 
+```{r}
+#| echo: false
+#| eval: true
+#| tbl-cap: "Numerical Summary of Dataset6"
+library(tidyverse)
+library(dplyr)
+summary_table <- dataset %>%
+  summarise(
+    'Mean' = mean(year, na.rm = TRUE),
+    'Median' = median(year, na.rm = TRUE),
+    'St.Dev' = sd(year, na.rm = TRUE),
+    'Min' = min(year, na.rm = TRUE),
+    'Max' = max(year, na.rm = TRUE),
+    'IQR' = IQR(year, na.rm = TRUE)
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        'Mean' = mean(length, na.rm = TRUE),
+        'Median' = median(length, na.rm = TRUE),
+        'St.Dev' = sd(length, na.rm = TRUE),
+        'Min' = min(length, na.rm = TRUE),
+        'Max' = max(length, na.rm = TRUE),
+        'IQR' = IQR(length, na.rm = TRUE)
+      )
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        'Mean' = mean(budget, na.rm = TRUE),
+        'Median' = median(budget, na.rm = TRUE),
+        'St.Dev' = sd(budget, na.rm = TRUE),
+        'Min' = min(budget, na.rm = TRUE),
+        'Max' = max(budget, na.rm = TRUE),
+        'IQR' = IQR(budget, na.rm = TRUE)
+      )
+  ) %>%
+  bind_rows(
+    dataset %>%
+      summarise(
+        'Mean' = mean(votes, na.rm = TRUE),
+        'Median' = median(votes, na.rm = TRUE),
+        'St.Dev' = sd(votes, na.rm = TRUE),
+        'Min' = min(votes, na.rm = TRUE),
+        'Max' = max(votes, na.rm = TRUE),
+        'IQR' = IQR(votes, na.rm = TRUE)
+      )
+  ) %>%
+  mutate(Variable = c("Year", "Length", "Budget", "Votes")) |>
+  select(Variable, everything())
+
+summary_table %>%
+  gt() %>%
+  fmt_number(columns = 2:7, decimals = 2) %>%
+  cols_label(
+    Variable = "Variable",
+    Mean = "Mean",
+    Median = "Median",
+    St.Dev = "Std. Dev",
+    Min = "Minimum",
+    Max = "Maximum",
+    IQR = "IQR"
+  )
+
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| tbl-cap: "Categorical Summary of Dataset6"
+#count each genre and proportion
+genre_summary <- dataset %>%
+  count(genre) %>%
+  mutate(Proportion = n / sum(n)) %>%
+  arrange(desc(n))
+
+genre_summary %>%
+  gt() %>%
+  fmt_number(columns = 3, decimals = 2) %>%
+  cols_label(
+    genre = "Genre",
+    n = "Count",
+    Proportion = "Proportion"
+  )
+```
+
+## Plots
+
+### Numerical explanatory variables
+
+```{r}
+#| eval: true
+#| fig-cap: "Boxplot of year vs. rating"
 ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "year")+ 
   theme(legend.position = "none")
 ```
 
-Numerical explanatory variable
-
 ```{r}
-
+#| eval: true
+#| fig-cap: "Boxplot of length vs. rating"
 ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "length")+ 
@@ -71,7 +165,8 @@ ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
 ```
 
 ```{r}
-
+#| eval: true
+#| fig-cap: "Boxplot of budget vs. rating"
 ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "budget")+ 
@@ -79,7 +174,8 @@ ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
 ```
 
 ```{r}
-
+#| eval: true
+#| fig-cap: "Boxplot of votes vs. rating"
 ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
   geom_boxplot() +
   labs(x = "rating_new", y = "votes")+ 
@@ -87,7 +183,8 @@ ggplot(data = dataset, aes(x = rating_new, y = votes, fill = rating_new)) +
 ```
 
 ```{r}
-
+#| eval: true
+#| fig-cap: "Boxplot of log-transformed votes vs. rating"
 #log(votes)
 ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new)) +
   geom_boxplot() +
@@ -97,34 +194,51 @@ ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new
   theme(legend.position = "none")
 ```
 
-Categorical explanatory variable
+### Categorical explanatory variable
 
 ```{r}
-dataset %>% 
-  tabyl(genre, rating_new) %>% 
-  adorn_percentages() %>% 
-  adorn_pct_formatting() %>% 
-  adorn_ns() # To show original counts
-```
-
-```{r}
-
-ggplot(data = dataset, aes(x = rating_new, group = genre)) +
-  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
-  labs(x = "Rating", y = "Proportion")
-```
-
-```{r}
-
+#| eval: true
+#| fig-cap: "Boxplot of genre vs. rating"
 #boxplot-genre
 ggplot(dataset, aes(x = genre, y = rating, fill = genre)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+```{r}
+#| echo: false
+#| eval: true
+#| tbl-cap: "Movie Ratings by Genre"
+genre_rating <- dataset %>% 
+  tabyl(genre, rating_new) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns() %>% 
+  gt() %>%
+  cols_label(
+    genre = "Genre",
+    '0' = "Rating ≤ 7",
+    '1' = "Rating > 7"
+  ) %>%
+  tab_header(
+    title = "Movie Ratings by Genre"
+  )
+genre_rating
+```
+
+```{r}
+#| eval: true
+#| fig-cap: "Barplot of genre proportion vs. rating "
+ggplot(data = dataset, aes(x = rating_new, group = genre)) +
+  geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
+  labs(x = "Rating", y = "Proportion")
+```
+
 # Formal Analysis
 
 ```{r}
+#| echo: false
+#| eval: false
 levels(dataset$rating_new) #baseline is 0(rating lower than 7))
 ```
 
@@ -135,34 +249,17 @@ levels(dataset$rating_new) #baseline is 0(rating lower than 7))
 model1 <- glm(rating_new ~ year + length + budget + votes + genre, 
                   data = dataset, 
                   family = binomial(link = "logit"))
-```
-
-```{r}
-
 summ(model1)
 ```
-
-Model 1: votes not significant, will use stepwise regression.
 
 ```{r}
 #model2-stepwise: rating_new ~ year + length + budget + genre
 model2 <- step(model1, direction = "both", trace = TRUE) #Bidirectional stepwise regression
-```
-
-```{r}
-
 summ(model2)
 ```
 
-Model 2:
-
-We used bidirectional stepwise regression. Removing votes, AIC drops to 967.95.
-
-The collinearity problem is not serious.
-
-But Animation and Romance have p-value \>0.05, can be removed.
-
 ```{r}
+#model3: final model
 dataset_up <- dataset %>%
   select(-votes)%>%
   filter(!genre %in% c("Romance", "Animation"))
@@ -170,19 +267,66 @@ dataset_up <- dataset %>%
 model3 <- glm(rating_new ~ year + length + budget + genre,
               data = dataset_up,
               family = binomial(link = "logit"))
+summ(model3)
 ```
 
 ```{r}
-
-vif(model3)
-
-summ(model3)
-
+#| eval: false
 confint(model3) %>%
   kable()
 ```
 
-AIC drops to 861.63.
+```{r}
+#| echo: true
+#| eval: true
+vif(model3)
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| tbl-cap: "Model Comparison"
+model_comparison <- tibble::tibble(
+  Model = c("Model 1", "Model 2", "Model 3"),
+  'Chi-Square (χ²)' = c(1380.81, 1379.32, 1261.26),
+  'p-Value' = c(0.00, 0.00, 0.00),
+  'AIC' = c(968.46, 967.95, 861.63),
+  'BIC' = c(1029.11, 1023.09, 905.17)
+)
+
+model_comparison %>%
+  gt() %>%
+  fmt_number(columns = 2:5, decimals = 2) %>%
+  cols_label(
+    Model = "Model",
+    'Chi-Square (χ²)' = "Chi-Square (χ²)",
+    'p-Value' = "p-Value",
+    'AIC' = "AIC",
+    'BIC' = "BIC"
+  ) %>%
+  tab_header(
+    title = "Model Comparison"
+  )
+
+```
+
+```{r}
+#lasso
+library(glmnet)
+X <- model.matrix(rating_new ~ year + length + budget + votes + genre, data = dataset)[,-1]
+y <- dataset$rating_new
+lasso_model <- cv.glmnet(X, y, family = "binomial", alpha = 1)
+coef(lasso_model, s = "lambda.min")
+coef(lasso_model, s = "lambda.1se")
+```
+
+To determine the best model for predicting whether a movie receives a rating higher than 7, we compared three models based on Chi-Square (χ²), AIC, and BIC.
+
+Model 1 included all predictors: year, length, budget, votes, and genre. It had the highest AIC (968.46) and BIC (1029.11). We then applied bidirectional stepwise selection, which identified votes as a non-significant predictor, leading to Model 2. While Model 2 showed a slight reduction in AIC (967.95) and BIC (1023.09), the improvement was minimal.
+
+Next, we examined the categorical variable genre and found that Animation and Romance were not statistically significant (p \> 0.05). Removing these categories in Model 3 led to a decrease in AIC (861.63) and BIC (905.17). Additionally, Model 3 maintained a strong Chi-Square value (χ² = 1261.26, p = 0.00) and showed no multicollinearity concerns (VIF values close to 1).
+
+In addition, we applied LASSO regression for variable selection, which further confirmed the exclusion of votes, Animation, and Romance genres. Therefore, Model 3 was selected as the final model:
 
 $$
 \log \left( \frac{P(Y = 1)}{1 - P(Y = 1)} \right) = \beta_0 + \beta_1 \cdot \text{year} + \beta_2 \cdot \text{length} + \beta_3 \cdot \text{budget} + \sum_i \beta_{4i} \cdot \text{genre}_i
@@ -205,7 +349,9 @@ where:
 ## Log-odds
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Log-Odds(higher than 7)"
 # Log-odds
 plot_model(model3, show.values = TRUE, transform = NULL,
            title = "Log-Odds(higher than 7)", show.p = FALSE)
@@ -218,7 +364,9 @@ Comedy (3.24), Short (3.68), and Documentary (5.34) genres significantly increas
 ## Odds
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Odds (higher than 7)"
 # Odds
 model3 %>%
   coef() %>%
@@ -239,34 +387,37 @@ dataset_up <- dataset_up %>%
 ```
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Prob. of rating higher than 7 vs. genre"
 plot_model(model3, type = "pred", terms = "genre", title = "",
            axis.title = c("genre", "Prob. of rating higher than 7"))
-```
-
-```{r}
-table(dataset$genre)
 ```
 
 The probability plot illustrates the likelihood of a movie receiving a rating higher than 7 based on its genre. Documentary films have the highest probability, followed by Short films, which show a wide range of uncertainty but generally have a high probability. The large uncertainty in Short films may be due to a smaller sample size. Comedy movies also perform well, with an estimated probability above 50%. Drama and Action movies have the lowest probabilities, with Drama films being nearly unlikely to receive a rating above 7.
 
 ```{r}
+#| echo: false
+#| eval: true
+#| fig-cap: "Average Probability of Rating > 7 for Different Genre"
 genre_probs <- dataset_up %>%
   group_by(genre) %>%
   summarise(mean_prob = mean(probs.higherthan7))
 
 ggplot(genre_probs, aes(x = genre, y = mean_prob, fill = genre)) +
   geom_bar(stat = "identity") +
-  labs(title = "Average Probability of Rating > 7 for Different Movie Genres",
+  labs(title = "Average Probability of Rating > 7 for Different Genre",
        x = "Movie Genre",
        y = "Average Probability") +
   theme_minimal()
 ```
 
-This bar chart illustrates the average probability of different movie genres receiving a rating greater than 7. The results show that Short films and Documentaries have the highest probability, while Drama and Romance have the lowest. Animation and Comedy also exhibit relatively high probabilities. 
+This bar chart illustrates the average probability of different movie genres receiving a rating greater than 7. The results show that Short films and Documentaries have the highest probability, while Drama and Romance have the lowest. Animation and Comedy also exhibit relatively high probabilities.
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Probability of rating higher than 7 vs. year"
 ggplot(data = dataset_up, aes(x = year, y = probs.higherthan7)) +
   geom_smooth(method="glm", 
               method.args = list(family="binomial"), 
@@ -277,7 +428,9 @@ ggplot(data = dataset_up, aes(x = year, y = probs.higherthan7)) +
 This plot shows the predicted probability of a movie receiving a rating above 7 over time. Newer movies may have a slightly higher probability of receiving a high rating than older movies. However, the overall increase in probability is relatively small, ranging from 0.28 to 0.32. This suggests that the release year has a slight positive effect on the high rating.
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Probability of rating higher than 7 vs. length"
 ggplot(data = dataset_up, aes(x = length, y = probs.higherthan7)) +
   geom_point(alpha = 0.3, color = "orange")+
   geom_smooth(method="glm", 
@@ -289,7 +442,9 @@ ggplot(data = dataset_up, aes(x = length, y = probs.higherthan7)) +
 This plot illustrates the relationship between movie length and the probability of receiving a rating higher than 7. The probability of receiving a high rating is highest for shorter films, particularly those under 50 minutes. However, as movie duration increases beyond 100 minutes, the probability declines sharply and approaches 0% beyond 150 minutes. This suggests that excessively long movies are less likely to receive high ratings.
 
 ```{r}
-
+#| echo: false
+#| eval: true
+#| fig-cap: "Probability of rating higher than 7 vs. budget"
 ggplot(data = dataset_up, aes(x = budget, y = probs.higherthan7)) +
   geom_point(alpha = 0.3, color = "orange")+
   geom_smooth(method="glm", 
@@ -304,14 +459,15 @@ This plot illustrates the relationship between movie budget and the probability 
 ## Evaluating the Model
 
 ```{r}
-library(pROC)
-
+#| echo: false
+#| eval: true
+#| fig-cap: "ROC Curve"
 roc_curve <- roc(dataset_up$rating_new, fitted(model3))
 plot(roc_curve, main = paste("ROC Curve (AUC =", round(auc(roc_curve), 3), ")"),
      col = "blue", lwd = 2)
 ```
 
-The ROC curve demonstrates that model 3 has excellent classification performance, with an AUC of 0.955, indicating strong discriminative ability. The curve is close to the top-left corner, suggesting high sensitivity and specificity, meaning the model effectively identifies positive cases while minimizing false positives.
+The ROC curve demonstrates that model 3 has excellent classification performance, with an AUC of 0.955, indicating strong discrimination ability. The curve is close to the top-left corner, suggesting high sensitivity and specificity, meaning the model effectively identifies positive cases while minimizing false positives.
 
 # Conclusion
 
@@ -334,18 +490,4 @@ model4 <- glm(rating_new ~ year + length + budget * genre,
 vif(model4)
 
 summ(model4)
-```
-
-AIC 790.....
-
-***Lasso: same for model 3
-```{r}
-# lasso: also remove votes, Animation and Romance
-library(glmnet)
-X <- model.matrix(rating_new ~ year + length + budget + votes + genre, data = dataset)[,-1]
-y <- dataset$rating_new
-lasso_model <- cv.glmnet(X, y, family = "binomial", alpha = 1)
-coef(lasso_model, s = "lambda.min")
-coef(lasso_model, s = "lambda.1se")
-
 ```
