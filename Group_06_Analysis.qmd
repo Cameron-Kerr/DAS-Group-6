@@ -44,7 +44,7 @@ dataset$rating_new <- ifelse(dataset$rating > 7, 1, 0)
 #Convert categorical variables to factor variables
 dataset$rating_new <- as.factor(dataset$rating_new)
 dataset$genre <- as.factor(dataset$genre)
-
+ 
 str(dataset)
 ```
 
