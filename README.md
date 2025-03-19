@@ -15,12 +15,7 @@ In addition, this analysis provides insights into audience preferences and indus
 Please make sure you have the following packages in R: 
 
 ```
-install.packages("tidyverse")
-install.packages("sjPlot")
-install.packages("jtools")
-install.packages("knitr")
-install.packages("janitor")
-install.packages("GGally")
-install.packages("car")
-install.packages("glmnet")
+install.packages(c("tidyverse", "sjPlot", "jtools", "knitr", 
+                   "janitor", "stats", "GGally", "car", "gt", 
+                   "pROC", "dplyr"))
 ```
