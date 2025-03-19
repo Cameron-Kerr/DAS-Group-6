@@ -44,14 +44,17 @@ dataset$rating_new <- ifelse(dataset$rating > 7, 1, 0)
 #Convert categorical variables to factor variables
 dataset$rating_new <- as.factor(dataset$rating_new)
 dataset$genre <- as.factor(dataset$genre)
-
+ 
 str(dataset)
 ```
 
 # Introduction
 
-This project aims to analyse the IMDB dataset using logistic regression to determine which factors influence whether a movie receives a rating higher than 7. By understanding these influences, producers can make decisions to improve the success of future films. In addition, this analysis provides insights into audience preferences and industry trends, helping to predict the likelihood of a film receiving a high rating......
+This project aims to analyse the IMDB dataset using logistic regression to determine which factors influence whether a movie receives a rating higher than 7. By understanding these influences, producers can make decisions to improve the success of future films. In addition, this analysis provides insights into audience preferences and industry trends, helping to predict the likelihood of a film receiving a high rating.
 
+Exploratory Analysis was preformed first to understand the structure of the data, the relationships in the data, to check for any outliers and to see if any transformations are needed. It also provided useful summary statistics and graphical summaries of the data to help better interpret the dataset in order to provide insight into what models might be most appropriate.
+
+After the exploratory analysis, formal analysis was performed on the dataset. As mentioned before Logistic regression was used to determine the significant factors that influence movie rating. The Logit link function was used for its interpretability when fitting the models. Several methods were then used to determine the best fitting model and after that log-odds, odds and probability plots were used to help visualise the most influential factors.
 # Exploratory Analysis
 
 ## Dataset Summary
@@ -122,6 +125,10 @@ summary_table %>%
 
 ```
 
+(Don't know if this is worth keeping)
+
+The summary statistics help better understand the data. It is worth noting there are massive outliers in the data for the Length, Budget and Votes variables which may be influential on our modeling. This means that the median statistic is going to be more informative when reading this table as it will not be influenced by outliers.
+
 ```{r}
 #| echo: false
 #| eval: true
@@ -142,6 +149,9 @@ genre_summary %>%
   )
 ```
 
+
+The main genre's within our dataset are Drama, Action and Comedy.The  Animation, Documentary and Short genre also compose around 15% of the of the data. There are only 18 Romance movies in the data, composing only 1% of the proportion of the data.
+
 ## Plots
 
 ### Numerical explanatory variables
@@ -155,6 +165,8 @@ ggplot(data = dataset, aes(x = rating_new, y = year, fill = rating_new)) +
   theme(legend.position = "none")
 ```
 
+The years in which a movie got a rating of a 7 or higher are very similar to the years in which a movie did not get a 7 or higher. There is more variability in the years in which a movie was given a 7 or higher.
+
 ```{r}
 #| eval: true
 #| fig-cap: "Boxplot of length vs. rating"
@@ -164,6 +176,9 @@ ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
   theme(legend.position = "none")
 ```
 
+
+The boxplots show that movies which are shorter in length do much better when being rated on IMBD, there is one outlier in which a movie which is around 220 minutes long but still is rated a 7 or higher. The boxplots of movies which are not given a seven or higher has a very small IQR, and has lots of outliers, the outliers suggest that longer movies typically do not get rated as well as shorter movies.
+
 ```{r}
 #| eval: true
 #| fig-cap: "Boxplot of budget vs. rating"
@@ -172,6 +187,8 @@ ggplot(data = dataset, aes(x = rating_new, y = budget, fill = rating_new)) +
   labs(x = "rating_new", y = "budget")+ 
   theme(legend.position = "none")
 ```
+
+Surprisingly the boxplots suggest that Movie budget is not a massive indicator of how well a movie will be rated by IMBD, both the boxplots are very varied and have similar median values. Both boxplots have outliers, with the boxplot relating to movies with a IMBD score of 7 or lower showing that some very high budget productions are not always critically acclaimed despite their large budget.
 
 ```{r}
 #| eval: true
@@ -194,6 +211,8 @@ ggplot(data = dataset, aes(x = rating_new, y = log(votes + 1), fill = rating_new
   theme(legend.position = "none")
 ```
 
+The data had to be log-transformed so the boxplots could be interpretable, (IS THIS FAN VOTES?)
+
 ### Categorical explanatory variable
 
 ```{r}
@@ -204,6 +223,9 @@ ggplot(dataset, aes(x = genre, y = rating, fill = genre)) +
   geom_boxplot() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+This plot shows which movie genres get better IMBD ratings than others. Romance, Action and Drama all seem to have low median IMBD ratings, but unlike the romance genre both action and Drama are very varied and have a lot of high scoring outliers. The Short movie and Documentary genre dominate the high IMBD ratings with both of their median values sitting above a 7 and they are both not very varied indicating that IMBD consistently rates these movies well. The Animation and Comedy genre both have a similar boxplot, the top 25% of Comedy movies rate better than the top 25% of animated movies and comedy movies ratings were more varied then animated movies ratings.
+
 
 ```{r}
 #| echo: false
@@ -226,6 +248,9 @@ genre_rating <- dataset %>%
 genre_rating
 ```
 
+
+This table above helps us interpret the boxplots of the genres above instead this time in a numerical format, it also gives us the count data for each genre. (SHOULD I ADD MORE?)
+
 ```{r}
 #| eval: true
 #| fig-cap: "Barplot of genre proportion vs. rating "
@@ -233,6 +258,9 @@ ggplot(data = dataset, aes(x = rating_new, group = genre)) +
   geom_bar(aes(y = ..prop.., fill = genre), stat = "count", position = "dodge") +
   labs(x = "Rating", y = "Proportion")
 ```
+
+This barplot tells us about the proportion of which movies are rates above a 7 or higher, the Short, Documentary, Comedy and Animation genres all have a large proportion of there movies being rated over a 7 by IMBD, conversely the Drama, Romance and Action genre have a large proportion of their movies rated as a 7 or lower by IMBD.
+
 
 # Formal Analysis
 
@@ -470,6 +498,8 @@ plot(roc_curve, main = paste("ROC Curve (AUC =", round(auc(roc_curve), 3), ")"),
 The ROC curve demonstrates that model 3 has excellent classification performance, with an AUC of 0.955, indicating strong discrimination ability. The curve is close to the top-left corner, suggesting high sensitivity and specificity, meaning the model effectively identifies positive cases while minimizing false positives.
 
 # Conclusion
+
+In conclusion the model which produced the best classification of if a movie will receive a IMBD rating higher than 7 is model three, this models contains the factors year, length, budget and genre. These variables are then all significant when looking for what factors influence whether or not a movie will be rated higher than a 7 by IMBD. Looking at the log-odds ratios plot we inferred that the most influential factors of what makes a movie a 7 or higher on IMBD are the Comedy, Short and Documentary genres. Going forward adding more factors and looking at more model types could help us better understand what causes a movie to be rated on a 7 or higher on IMBD.
 
 # Future Work
 
