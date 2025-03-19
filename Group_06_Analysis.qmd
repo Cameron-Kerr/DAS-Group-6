@@ -11,7 +11,7 @@ editor_options:
   chunk_output_type: console
 execute:
   echo: true
-  eval: false
+  eval: true
   warning: false
   message: false
 geometry: margin=1in,landscape
@@ -35,7 +35,7 @@ library(dplyr)
 ```{r}
 #| label: data
 #Explore Data
-dataset <- read.csv("dataset06.csv")
+dataset <- read.csv("C:/Users/yldca/Downloads/DatasetPJ2/dataset06.csv")
 
 dataset <- dataset %>%
   drop_na()
@@ -60,8 +60,7 @@ This project aims to analyse the IMDB dataset using logistic regression to deter
 #| echo: false
 #| eval: true
 #| tbl-cap: "Numerical Summary of Dataset6"
-library(tidyverse)
-library(dplyr)
+
 summary_table <- dataset %>%
   summarise(
     'Mean' = mean(year, na.rm = TRUE),
