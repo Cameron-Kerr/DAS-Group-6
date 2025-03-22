@@ -54,9 +54,9 @@ ggplot(dataset, aes(x = rating)) +
 
 The histogram of IMDB Ratings shows a binomial distribution with two peaks, which suggests creating the binary variable rating_new:
 
--   Movies with ratings \<= 7 are labeled as 0 (baseline).
+-   Movies with ratings \<=7 are labeled as 0 (baseline).
 
--   Movies with ratings \> 7 are labeled as 1.
+-   Movies with ratings \>7 are labeled as 1.
 
 ```{r}
 #| echo: true
@@ -202,7 +202,7 @@ ggplot(data = dataset, aes(x = rating_new, y = length, fill = rating_new)) +
   theme(legend.position = "none")
 ```
 
-The boxplots show that movies which are shorter in length do much better when being rated on IMDB, there is one outlier in which a movie which is around 220 minutes long but still is rated a 7 or higher. The boxplots of movies which are not given a seven or higher has a very small IQR, and has lots of outliers, the outliers suggest that longer movies typically do not get rated as well as shorter movies.
+The boxplots show that movies which are shorter in length do much better when being rated on IMDB, there is one outlier in which a movie which is around 220 minutes long but still is rated a 7 or higher. The boxplots of movies which are not given a seven or higher hahave very small IQR, and has lots of outliers, the outliers suggest that longer movies typically do not get rated as well as shorter movies.
 
 ```{r, fig.width=4, fig.height=3}
 #| fig-cap: "Boxplot of budget vs. rating"
@@ -285,6 +285,16 @@ summ(model1)
 ```{r}
 #| echo: true
 #| eval: false
+#model1-full model with log: rating_new ~ year + length + budget + log(votes) + genre
+model1_log_votes <- glm(rating_new ~ year + length + budget + log(votes) + genre, 
+                  data = dataset, 
+                  family = binomial(link = "logit"))
+summ(model1_log_votes)
+```
+
+```{r}
+#| echo: true
+#| eval: false
 #model2-stepwise: rating_new ~ year + length + budget + genre
 model2 <- step(model1, direction = "both", trace = TRUE) #Bidirectional stepwise regression
 summ(model2)
@@ -348,9 +358,9 @@ coef(lasso_model, s = "lambda.1se")
 
 To determine the best model for predicting whether a movie receives a rating higher than 7, we compared three models based on AIC and BIC.
 
-Model 1 included all predictors: year, length, budget, votes, and genre. It had the highest AIC (968.46) and BIC (1029.11). We then applied bidirectional stepwise selection, which identified votes as a non-significant predictor, leading to Model 2. While Model 2 showed a slight reduction in AIC (967.95) and BIC (1023.09), the improvement was minimal.
+Model 1 included all predictors: year, length, budget, votes, and genre. It had the highest AIC (968.46) and BIC (1029.11). We also tried using the full model with log(votes), but the p-value was 0.85 and AIC became even higher, the model did not improve. We then applied bidirectional stepwise selection based on Model 1, which identified votes as a non-significant predictor, leading to Model 2. While Model 2 showed a slight reduction in AIC (967.95) and BIC (1023.09), the improvement was minimal.
 
-Next, we examined the categorical variable genre and found that Animation and Romance were not statistically significant (p \> 0.05). Removing these categories in Model 3 led to a decrease in AIC (861.63) and BIC (905.17). Additionally, Model 3 showed no multicollinearity concerns (VIF values close to 1).
+Next, we examined the categorical variable genre and found that Animation and Romance were not statistically significant (p \> 0.05). Removing these categories in Model 3 led to a decrease in AIC (861.63) and BIC (905.17). Additionally, Model 3 showed no multicollinearity concerns since VIF values close to 1.
 
 In addition, we applied LASSO regression for variable selection, which further confirmed the exclusion of votes, Animation, and Romance genres. Therefore, Model 3 was selected as the final model:
 
