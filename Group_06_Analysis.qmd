@@ -1,5 +1,5 @@
 ---
-title: "Factors Influencing IMDB Movie Rating based on Generalized LInear Model"
+title: "Factors Influencing IMDB Movie Rating based on Generalized Linear Model"
 author: Yawen Fu, Cameron Kerr, Zihan Wu, Yaqing Hu,Yanchen Guo
 number-sections: true
 format: 
